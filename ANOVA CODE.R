@@ -1,5 +1,7 @@
-ANOVA code
 
+#######################################################################
+########################### packages needed ###########################
+#######################################################################
 install.packages("PerformanceAnalytics")
 install.packages("stargazer")
 install.packages("lmtest")
@@ -20,11 +22,9 @@ library(nortest)
 library(Rmisc)
 library("PerformanceAnalytics")
 
-
-
-Data input
-
-
+#######################################################################
+########################### data input ################################
+#######################################################################
 maindata<-read.csv(file.choose(),header=T)
 head(maindata)
 nrow(maindata)
@@ -37,7 +37,9 @@ rm(Primer)
 rm(Thickness)
 rm(Adhesive)
 
-
+######################################################################################
+########################### preliminary data analysis ################################
+######################################################################################
 tapply(peelstrength,adhesive,mean)
 tapply(peelstrength,primer,mean)
 tapply(peelstrength,thickness,mean)
@@ -51,9 +53,8 @@ summarySE(maindata,measurevar="peelstrength",groupvars=c("adhesive","primer","th
 mean(peelstrength)
 sum(peelstrength)
 mytable<-xtabs(peelstrength~adhesive+primer+thickness)
-mytable
 
-Plots
+# Plots
 
 boxplot(peelstrength~adhesive,ylab="Peel Strength",xlab="Adhesive")
 boxplot(peelstrength~primer,ylab="Peel Strength",xlab="Primer")
@@ -61,14 +62,10 @@ boxplot(peelstrength~thickness,ylab="Peel Strength",xlab="Thickness")
 boxplot(peelstrength~adhesive+primer+thickness,ylab="Peel Strength",xlab="Trt",data=maindata)
 abline(52.77,0,lty=2)
 
-Interaction plots
-
-
-Interaction plots
+# Interaction plots
 # 2-way plots
 
 par(mfrow = c(2,2))
-
 interaction.plot(x.factor = adhesive, trace.factor = primer, response = peelstrength,
                  fun = mean, legend = F,  type = "b", lwd = 3,axes=F,
                  trace.label="Primer", xlab = "Adhesive 1 2 3 4", ylab = 
@@ -99,12 +96,10 @@ axis(2, at=seq(5,30,5))
 text(1.5, 19, "cold room")
 text(1.5, 10, "room temp")
 
-
 # split the data for 3-way plot
 maindata1 <- subset(maindata, maindata$thickness == 1)
 maindata2 <- subset(maindata, maindata$thickness == 2)
 nrow(maindata1)
-
 par(mfrow = c(1,1))
 
 interaction.plot(x.factor = maindata1$adhesive, trace.factor = maindata1$primer, response = maindata1$peelstrength,
@@ -128,8 +123,10 @@ axis(2, at=10:80)
 text(2, 75, "With Primer")
 text(1.5, 47, "Without Primer")
 
-Fit
-##Full model
+######################################################################################
+########################### ANOVA model & diagnostics ################################
+######################################################################################
+# Full model
 fit1<-lm(peelstrength~adhesive*primer*thickness,contrasts=c(adhesive=contr.sum,
                                              primer=contr.sum,thickness=contr.sum))
 Anova(fit1,type=3) ##Type III SS
@@ -138,18 +135,17 @@ summary(fit1)
 stargazer(Anova(fit1),summary=F)
 stargazer(anova(fit1),summary=F)
 
-Residual analysis
+# Residual analysis
 
 par(mfrow = c(2,2))
 fits<-fitted.values(fit1)
 resid<-residuals(fit1)
-fits
-resid
 plot(fits,resid,las=1,main="Residuals vs Fits", xlab="Fitted values"
      , ylab="Residuals")
 plot(fit1)
 summary(fit1)
 
+# input data again
 trtdata<-read.csv(file.choose(),header=T)
 trtdata$Trt
 table(trtdata$Trt)
@@ -157,28 +153,18 @@ plot.default(trtdata$Trt,resid,las=1,main="Residuals vs Treatment Levels"
              ,ylab="Residuals",xlab="Treatments",axes=T,ann=par("ann"))
 axis(1, at=1:16)
 par(mfrow = c(1,1))
-
 leveneTest(peelstrength, interaction(adhesive,primer,thickness))
 leveneTest(peelstrength~factor(trtdata$Trt),data=maindata)
 stargazer(leveneTest(peelstrength, interaction(adhesive,primer,thickness)),summary=F)
 
-Normality test
+# Normality test
 
 z<-qqnorm(resid)
-z
 cor(z$x,z$y) ###==0.99463
-order(resid)
-h<-sort(resid,decreasing=F)
-h
-z<-qqnorm(h)
-qqline(h)
-z
-cor(z$x,z$y) ##==0.994663
 ###both methods gave the same correlation
 stargazer(shapiro.test(resid),type="text")
 texreg(shapiro.test(resid))
 f<-shapiro.test(resid)
-
 stargazer(f)
 
 n = 96
@@ -189,22 +175,20 @@ cor(ExpVals,sort(resid))
 ##0.9945999 Its almost the same as previous, so this method works too!!
 hist(resid)
 
-Bonferroni OT
+# Bonferroni OT
 
 boxplot(rstudent(fit1),main="Rstudent box plot",ylab="Rstudent",las=1)
 youtliers<-which(abs(rstudent(fit1))>qt(1-(0.05/(2*96)),96-16-1))
-youtliers
 qt(1-(0.05/(2*75)),96-16-1)
 rstudent(fit1)
 outlierTest(fit1)
-
 
 
 chart.Correlation(maindata, histogram=TRUE, pch=19)
 vif(fit1)
 stargazer(vif(fit1))
 
-Transformation
+# Transformation
 
 summary(peelstrength)
 boxcox(peelstrength~factor(adhesive)*factor(primer)*factor(thickness),
@@ -227,7 +211,7 @@ for(lam in seq(-2,2,0.1)){
 cbind(lambda,sse)
 
 
-### Just trying log
+# Trying log
 logpeel<-log(peelstrength)
 logfit<-fit2<-lm(logpeel~adhesive*primer*thickness,contrasts=c(adhesive=contr.sum,
                 primer=contr.sum,thickness=contr.sum))
@@ -236,38 +220,28 @@ leveneTest(logpeel, interaction(adhesive,primer,thickness))
 summary(logfit)
 Anova(logfit,type=3) 
 
-##################
-
-
-
 transpeel<-(peelstrength)^0.5
 
-transformed Fit
-##Full model transformed
+# transformed Fit
+# Full model transformed
 fit2<-lm(transpeel~adhesive*primer*thickness,contrasts=c(adhesive=contr.sum,
                                                   primer=contr.sum,thickness=contr.sum))
 Anova(fit2,type=3) ##Type III SS
 anova(fit2) ##Type I SS
 summary(fit2)
 
-
-
-Residual analysis
+# Residual analysis
 
 par(mfrow = c(2,2))
 transfits<-fitted.values(fit2)
 transresid<-residuals(fit2)
-transfits
-transresid
 plot(transfits,transresid,las=1,main="Residuals vs Fits (Transformed)", xlab="Fitted values"
      , ylab="Residuals")
 plot(fit2)
-
 plot.default(trtdata$Trt,transresid,las=1,main="Residuals vs Treatment Levels"
              ,ylab="Residuals",xlab="Treatments",axes=T,ann=par("ann"))
 axis(1, at=1:16)
 par(mfrow = c(1,1))
-
 
 leveneTest(transpeel, interaction(adhesive,primer,thickness))
 leveneTest(transpeel~factor(trtdata$Trt),data=maindata)
@@ -277,41 +251,35 @@ stargazer(leveneTest(transpeel, interaction(adhesive,primer,thickness), summary=
 stargazer(leveneTest(peelstrength, interaction(adhesive,primer,thickness)),summary=F)
 stargazer(leveneTest(fit2),summary=F)
 
-peelstrength
 data.class(peelstrength)
 data.class(transpeel)
 shapiro.test(transresid)
 
 hist(resid)
 
-Bonferroni OT
+# Bonferroni OT
 
 boxplot(rstudent(fit2),main="Rstudent box plot",ylab="Rstudent",las=1)
 youtliers<-which(abs(rstudent(fit2))>qt(1-(0.05/(2*96)),96-16-1))
-youtliers
 qt(1-(0.05/(2*75)),96-16-1)
 rstudent(fit1)
 outlierTest(fit2)
-
 
 bdata<-cbind(transpeel,adhesive,primer,thickness)
 chart.Correlation(bdata, histogram=TRUE, pch=19)
 vif(fit2)
 stargazer(vif(fit2))
 
+######################################################################################
+########################### adehsive effect analysis #################################
+######################################################################################
 
-Adhesive Effect Analysis
-
-
-
-Tukey value
+# Tukey value
 T<-qtukey(0.95,16,80)/sqrt(2)
-T
 
-Bonferroni contrasts
+#Bonferroni contrasts
 g=3
 B<-qt(1-(0.05/(2*3)),96-16)
-B
 mse<-12.3
 mu4..<-64.333
 mu1..<-63.958
@@ -329,44 +297,27 @@ d3hat<-mu4..-mu3..
 se_d1hat<-sqrt(mse*((1/24)+(1/24)))
 se_d2hat<-sqrt(mse*((1/24)+(1/24)))
 se_d3hat<-sqrt(mse*((1/24)+(1/24)))
-d1hat
-d2hat
-d3hat
-se_d1hat
-se_d2hat
-se_d3hat
 ul<-d1hat+B*se_d1hat
 ll<-d1hat-B*se_d1hat
-ul
-ll
+
 ul<-d2hat+B*se_d2hat
 ll<-d2hat-B*se_d2hat
-ul
-ll
+
 ul<-d3hat+B*se_d3hat
 ll<-d3hat-B*se_d3hat
-ul
-ll
+
 L1hat<-((mu101+mu102+mu111+mu112)/4)-((mu201+mu202+mu211+mu212)/4)
 L2hat<-((mu101+mu102+mu201+mu202)/4)-((mu111+mu112+mu211+mu212)/4)
 se_Lhat<-sqrt(mse*(1/16)*(1/5+1/5+1/12+1/13+1/13+1/13+1/7+1/7))
-L1hat
-L2hat
-se_Lhat
 ul<-L1hat+B*se_Lhat
 ll<-L1hat-B*se_Lhat
-ul
-ll
+
 ul<-L2hat+B*se_Lhat
 ll<-L2hat-B*se_Lhat
-ul
-ll
 
-
-
-
-Trt Effects analysis
-
+######################################################################################
+########################### treatment effect analysis ################################
+######################################################################################
 fit_aov<-aov(peelstrength~adhesive*primer*thickness,contrasts=c(adhesive=contr.sum,
       primer=contr.sum,thickness=contr.sum)) ##same as the (lm) model 
 
@@ -374,14 +325,13 @@ Anova(fit_aov,type=3) ##same as the (lm) modelfit2
 par(mfrow = c(1,1))
 fit_tukey<-TukeyHSD(fit_aov,conf.level=0.95)
 plot(fit_tukey,sub="Tukey Honest Significant Differences",las=1)
-fit_tukey
 summary(fit_aov)
 
 
-Line plot
+# Line plot
 summarySE(maindata)
 tapply(trtdata$peelstrength,trtdata$Trt,mean)
 meansbb<-tapply(trtdata$peelstrength,trtdata$Trt,mean)
 sort(meansbb)
-## wont work too many comparisons to make
+
 
